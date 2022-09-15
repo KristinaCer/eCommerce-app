@@ -1,7 +1,9 @@
 package com.example.demo;
 
 import com.example.demo.model.persistence.AppUser;
+import com.example.demo.model.persistence.Item;
 import com.example.demo.model.persistence.Role;
+import com.example.demo.model.persistence.repositories.ItemRepository;
 import com.example.demo.service.UserService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -10,6 +12,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 
 @SpringBootApplication
@@ -23,7 +26,7 @@ public class SareetaApplication {
 	}
 
 	@Bean
-	CommandLineRunner initDB(UserService userService){
+	CommandLineRunner initDB(UserService userService, ItemRepository repository){
 		return  args -> {
 			userService.saveRole(new Role(1L, "ROLE_USER"));
 			userService.saveRole(new Role(2L, "ROLE_ADMIN"));
@@ -38,6 +41,10 @@ public class SareetaApplication {
 			userService.addRoleToUser("anna", "ROLE_SUPER_ADMIN");
 			userService.addRoleToUser("john1", "ROLE_USER");
 			userService.addRoleToUser("ali1", "ROLE_USER");
+
+			repository.save(new Item(1L, "Round Widget",  BigDecimal.valueOf(2.99),"A widget that is round"));
+			repository.save(new Item(2L, "Square Widget",  BigDecimal.valueOf(1.99),"A widget that is square"));
+
 
 		};
 	}

@@ -1,5 +1,6 @@
 package com.example.demo.security;
 
+import com.example.demo.security.jwt.CustomAuthorizationFilter;
 import com.example.demo.security.jwt.JWTAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
@@ -10,6 +11,10 @@ import org.springframework.security.config.annotation.web.configuration.WebSecur
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+import static org.springframework.http.HttpMethod.GET;
+import static org.springframework.http.HttpMethod.POST;
 
 @EnableWebSecurity
 @Configuration
@@ -28,12 +33,27 @@ public class ApplicationSecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
-        http.cors().and().csrf().disable();
+        JWTAuthenticationFilter jwtAuthenticationFilter = new JWTAuthenticationFilter(authenticationManager());
+        jwtAuthenticationFilter.setFilterProcessesUrl("/api/login");
+
+                http.cors().and().csrf().disable();
         http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
-        http.authorizeRequests().anyRequest().permitAll();
-        http.addFilter(new JWTAuthenticationFilter(authenticationManager()));
-//        http.authorizeRequests().antMatchers("/h2-console/**").permitAll()
-//                .anyRequest().authenticated();
-//        http.headers().frameOptions().disable();
+
+        http.authorizeRequests().antMatchers(POST,"/api/user/**").permitAll();
+        http.authorizeRequests().antMatchers(POST,"api/login/**").permitAll();
+
+        http.authorizeRequests().antMatchers("/api/cart/**").hasAuthority("ROLE_USER");
+        http.authorizeRequests().antMatchers("/api/cart/**").hasAuthority("ROLE_USER");
+        http.authorizeRequests().antMatchers("/api/item/**").hasAnyAuthority("ROLE_USER","ROLE_ADMIN");
+        http.authorizeRequests().antMatchers("/api/order/**").hasAuthority("ROLE_ADMIN");
+       // http.authorizeRequests().antMatchers(POST,"/api/order/submit").hasAuthority("ROLE_USER");
+
+        http.authorizeRequests().anyRequest().authenticated();
+        http.addFilter(jwtAuthenticationFilter);
+        http.addFilterBefore(new CustomAuthorizationFilter(), UsernamePasswordAuthenticationFilter.class);
+
+        http.authorizeRequests().antMatchers("/h2-console/**").permitAll()
+                .anyRequest().authenticated();
+        http.headers().frameOptions().disable();
     }
 }
