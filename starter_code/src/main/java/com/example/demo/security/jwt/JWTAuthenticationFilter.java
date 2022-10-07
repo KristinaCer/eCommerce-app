@@ -2,7 +2,7 @@ package com.example.demo.security.jwt;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
-import com.example.demo.model.persistence.AppUser;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -16,8 +16,11 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.stream.Collectors;
+
+import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 
 
 public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilter {
@@ -32,37 +35,45 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
     @Override
     public Authentication attemptAuthentication(HttpServletRequest req,
                                                 HttpServletResponse res) throws AuthenticationException {
-            String username = req.getParameter("username");
-            String password = req.getParameter("password");
-            return authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
+        try {
+            UsernamePasswordAuthRequest authRequest = new ObjectMapper()
+                    .readValue(req.getInputStream(), UsernamePasswordAuthRequest.class);
+            return authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            authRequest.getUsername(),
+                            authRequest.getPassword(),
+                    new ArrayList<>()));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     //generates token and sends it back to the user
+
     @Override
     protected void successfulAuthentication(HttpServletRequest req,
                                             HttpServletResponse res,
                                             FilterChain chain,
                                             Authentication auth) throws IOException, ServletException {
-
         User user = (User) auth.getPrincipal();
         //algorithm to sign the access and refresh tokens
-        Algorithm algorithm = Algorithm.HMAC256(SecurityConstants.SECRET.getBytes());
-
+        Algorithm algorithm = Algorithm.HMAC512(SecurityConstants.SECRET.getBytes());
         String access_token = JWT.create()
                 .withSubject(user.getUsername())
-                .withExpiresAt(new Date(System.currentTimeMillis() + 10 * 60 * 1000))
+                .withExpiresAt(new Date(System.currentTimeMillis() + SecurityConstants.TOKEN_EXPIRATION_TIME))
                 .withIssuer(req.getRequestURL().toString())
                 //passing user roles
-                .withClaim("roles", user.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(Collectors.toList()))
+                .withClaim(SecurityConstants.ROLES, user.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(Collectors.toList()))
                 .sign(algorithm);
 
         String refresh_token = JWT.create()
                 .withSubject(user.getUsername())
-                .withExpiresAt(new Date(System.currentTimeMillis() + SecurityConstants.EXPIRATION_TIME))
+                .withExpiresAt(new Date(System.currentTimeMillis() + SecurityConstants.REFRESH_TOKEN_EXPIRATION_TIME))
                 .withIssuer(req.getRequestURL().toString())
+                .withClaim(SecurityConstants.ROLES, user.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(Collectors.toList()))
                 .sign(algorithm);
-
-        res.setHeader(SecurityConstants.HEADER_STRING_ACCESS_TOKEN, access_token);
+        //both ways work the same
+        res.addHeader(AUTHORIZATION, SecurityConstants.TOKEN_PREFIX + access_token);
         res.setHeader(SecurityConstants.HEADER_STRING_REFRESH_TOKEN, refresh_token);
     }
 }
