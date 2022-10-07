@@ -45,7 +45,6 @@ public class SareetaApplication {
 			repository.save(new Item(1L, "Round Widget",  BigDecimal.valueOf(2.99),"A widget that is round"));
 			repository.save(new Item(2L, "Square Widget",  BigDecimal.valueOf(1.99),"A widget that is square"));
 
-
 		};
 	}
 }
