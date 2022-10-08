@@ -19,9 +19,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.stream.Collectors;
-
-import static org.springframework.http.HttpHeaders.AUTHORIZATION;
-
+import static com.auth0.jwt.algorithms.Algorithm.HMAC512;
 
 public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilter {
 
@@ -49,7 +47,6 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
     }
 
     //generates token and sends it back to the user
-
     @Override
     protected void successfulAuthentication(HttpServletRequest req,
                                             HttpServletResponse res,
@@ -57,7 +54,7 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
                                             Authentication auth) throws IOException, ServletException {
         User user = (User) auth.getPrincipal();
         //algorithm to sign the access and refresh tokens
-        Algorithm algorithm = Algorithm.HMAC512(SecurityConstants.SECRET.getBytes());
+        Algorithm algorithm = HMAC512(SecurityConstants.SECRET.getBytes());
         String access_token = JWT.create()
                 .withSubject(user.getUsername())
                 .withExpiresAt(new Date(System.currentTimeMillis() + SecurityConstants.TOKEN_EXPIRATION_TIME))
@@ -65,15 +62,6 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
                 //passing user roles
                 .withClaim(SecurityConstants.ROLES, user.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(Collectors.toList()))
                 .sign(algorithm);
-
-        String refresh_token = JWT.create()
-                .withSubject(user.getUsername())
-                .withExpiresAt(new Date(System.currentTimeMillis() + SecurityConstants.REFRESH_TOKEN_EXPIRATION_TIME))
-                .withIssuer(req.getRequestURL().toString())
-                .withClaim(SecurityConstants.ROLES, user.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(Collectors.toList()))
-                .sign(algorithm);
-        //both ways work the same
-        res.addHeader(AUTHORIZATION, SecurityConstants.TOKEN_PREFIX + access_token);
-        res.setHeader(SecurityConstants.HEADER_STRING_REFRESH_TOKEN, refresh_token);
+        res.setHeader(SecurityConstants.HEADER_STRING_ACCESS_TOKEN, SecurityConstants.TOKEN_PREFIX + access_token);
     }
 }

@@ -8,5 +8,4 @@ import com.example.demo.model.persistence.Item;
 
 public interface ItemRepository extends JpaRepository<Item, Long> {
 	 List<Item> findByName(String name);
-
 }

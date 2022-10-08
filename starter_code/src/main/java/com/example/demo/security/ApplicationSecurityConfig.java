@@ -1,6 +1,6 @@
 package com.example.demo.security;
 
-import com.example.demo.security.jwt.CustomAuthorizationFilter;
+import com.example.demo.security.jwt.JwtTokenVerifierFilter;
 import com.example.demo.security.jwt.JWTAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -37,19 +37,23 @@ public class ApplicationSecurityConfig extends WebSecurityConfigurerAdapter {
         JWTAuthenticationFilter jwtAuthenticationFilter = new JWTAuthenticationFilter(authenticationManager());
         jwtAuthenticationFilter.setFilterProcessesUrl("/api/login");
 
-        http.csrf().disable()
-                .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+        http
+                .csrf().disable()
+                .sessionManagement()
+                    .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 .and()
+                .headers().frameOptions().disable()
+                .and()
+                //Authorization filters must be before authorizeRequests()
+                .addFilter(jwtAuthenticationFilter)
+                .addFilterAfter(new JwtTokenVerifierFilter(), UsernamePasswordAuthenticationFilter.class)
                 .authorizeRequests()
                 .antMatchers("/h2-console/**").permitAll()
                 .antMatchers(POST, "/api/user/**","api/login/**").permitAll()
-                .and()
-                .authorizeRequests().anyRequest().authenticated()
-                .and()
-                .addFilter(jwtAuthenticationFilter)
-                .addFilterBefore(new CustomAuthorizationFilter(), UsernamePasswordAuthenticationFilter.class)
-                .headers().frameOptions().disable();
+                .anyRequest().authenticated();
+
     }
+
     @Bean
     public AuthenticationManager AuthenticationManagerBean() throws Exception {
         return super.authenticationManagerBean();
